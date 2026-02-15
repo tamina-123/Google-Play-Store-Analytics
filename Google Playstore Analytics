@@ -1,0 +1,701 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from datetime import datetime
+import pytz
+
+ist = pytz.timezone("Asia/Kolkata")
+current_time = datetime.now(ist).time()
+
+start_time = datetime.strptime("15:00", "%H:%M").time()
+end_time = datetime.strptime("17:00", "%H:%M").time()
+
+file_path = "Play Store Data.csv"
+df = pd.read_csv(file_path)
+
+df['Rating'] = pd.to_numeric(df['Rating'], errors='coerce')
+df['Reviews'] = pd.to_numeric(df['Reviews'], errors='coerce')
+
+df['Installs'] = (
+    df['Installs']
+    .astype(str)
+    .str.replace('+', '', regex=False)
+    .str.replace(',', '', regex=False)
+)
+df['Installs'] = pd.to_numeric(df['Installs'], errors='coerce')
+
+def convert_size(size):
+    if isinstance(size, str):
+        if 'M' in size:
+            return float(size.replace('M', ''))
+        elif 'k' in size:
+            return float(size.replace('k', '')) / 1024
+    return None
+
+df['Size_MB'] = df['Size'].apply(convert_size)
+
+df['Last Updated'] = pd.to_datetime(df['Last Updated'], errors='coerce')
+df['Update_Month'] = df['Last Updated'].dt.month_name()
+
+filtered_df = df[
+    (df['Rating'] >= 4.0) &
+    (df['Size_MB'] >= 10) &
+    (df['Update_Month'] == 'January')
+]
+
+category_summary = (
+    filtered_df
+    .groupby('Category')
+    .agg(
+        Avg_Rating=('Rating', 'mean'),
+        Total_Reviews=('Reviews', 'sum'),
+        Total_Installs=('Installs', 'sum')
+    )
+    .reset_index()
+)
+
+top_categories = (
+    category_summary
+    .sort_values(by='Total_Installs', ascending=False)
+    .head(10)
+)
+
+if start_time <= current_time <= end_time:
+
+    x = range(len(top_categories))
+
+    plt.figure(figsize=(12, 6))
+
+    plt.bar(x, top_categories['Avg_Rating'], width=0.4, label='Average Rating')
+    plt.bar(
+        [i + 0.4 for i in x],
+        top_categories['Total_Reviews'],
+        width=0.4,
+        label='Total Reviews'
+    )
+
+    plt.xticks(
+        [i + 0.2 for i in x],
+        top_categories['Category'],
+        rotation=45,
+        ha='right'
+    )
+
+    plt.xlabel("App Category")
+    plt.ylabel("Value")
+    plt.title("Average Rating vs Total Reviews (Top 10 Categories)")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+else:
+    print("This chart is available only between 3 PM IST and 5 PM IST.")
+
+import pandas as pd
+import matplotlib.pyplot as plt
+from datetime import datetime
+import pytz
+
+ist = pytz.timezone("Asia/Kolkata")
+current_time = datetime.now(ist).time()
+
+start_time = datetime.strptime("13:00", "%H:%M").time()
+end_time = datetime.strptime("17:00", "%H:%M").time()
+
+
+df = pd.read_csv("Play Store Data.csv")
+
+
+# Rating & Reviews
+df['Rating'] = pd.to_numeric(df['Rating'], errors='coerce')
+df['Reviews'] = pd.to_numeric(df['Reviews'], errors='coerce')
+
+# Installs
+df['Installs'] = (
+    df['Installs']
+    .astype(str)
+    .str.replace('+', '', regex=False)
+    .str.replace(',', '', regex=False)
+)
+df['Installs'] = pd.to_numeric(df['Installs'], errors='coerce')
+
+# Price
+df['Price'] = (
+    df['Price']
+    .astype(str)
+    .str.replace('$', '', regex=False)
+)
+df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
+
+# Revenue
+df['Revenue'] = df['Installs'] * df['Price']
+
+# Size to MB
+def size_to_mb(size):
+    if isinstance(size, str):
+        if 'M' in size:
+            return float(size.replace('M', ''))
+        if 'k' in size:
+            return float(size.replace('k', '')) / 1024
+    return None
+
+df['Size_MB'] = df['Size'].apply(size_to_mb)
+
+# Android Version
+df['Android_Ver'] = (
+    df['Android Ver']
+    .astype(str)
+    .str.extract(r'(\d+\.\d+)')
+)
+df['Android_Ver'] = pd.to_numeric(df['Android_Ver'], errors='coerce')
+
+# App name length
+df['App_Length'] = df['App'].astype(str).apply(len)
+
+# App Type
+df['Type'] = df['Type'].fillna('Free')
+
+
+filtered_df = df[
+    (df['Installs'] >= 10000) &
+    (df['Revenue'] >= 10000) &
+    (df['Android_Ver'] > 4.0) &
+    (df['Size_MB'] > 15) &
+    (df['Content Rating'] == 'Everyone') &
+    (df['App_Length'] <= 30)
+]
+
+
+top_categories = (
+    filtered_df
+    .groupby('Category')['Installs']
+    .sum()
+    .sort_values(ascending=False)
+    .head(3)
+    .index
+)
+
+filtered_df = filtered_df[filtered_df['Category'].isin(top_categories)]
+
+
+summary = (
+    filtered_df
+    .groupby(['Category', 'Type'])
+    .agg(
+        Avg_Installs=('Installs', 'mean'),
+        Avg_Revenue=('Revenue', 'mean')
+    )
+    .reset_index()
+)
+
+if start_time <= current_time <= end_time:
+
+    fig, ax1 = plt.subplots(figsize=(12, 6))
+
+    x_labels = summary['Category'] + " (" + summary['Type'] + ")"
+    x = range(len(x_labels))
+
+    # Left axis - Installs
+    ax1.bar(x, summary['Avg_Installs'], width=0.4, label='Average Installs')
+    ax1.set_ylabel("Average Installs")
+
+    # Right axis - Revenue
+    ax2 = ax1.twinx()
+    ax2.plot(x, summary['Avg_Revenue'], marker='o', label='Average Revenue')
+    ax2.set_ylabel("Average Revenue ($)")
+
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(x_labels, rotation=45, ha='right')
+
+    plt.title("Average Installs vs Revenue (Free vs Paid Apps)")
+    fig.tight_layout()
+    plt.show()
+
+else:
+    print(" This chart is visible only between 1 PM IST and 2 PM IST.")
+
+import pandas as pd
+import plotly.express as px
+from datetime import datetime
+import pytz
+
+ist = pytz.timezone("Asia/Kolkata")
+current_time = datetime.now(ist).time()
+
+start_time = datetime.strptime("18:00", "%H:%M").time()
+end_time   = datetime.strptime("20:00", "%H:%M").time()
+
+if not (start_time <= current_time <= end_time):
+    print(" This choropleth map is available only between 6 PM IST and 8 PM IST.")
+
+else:
+    df = pd.read_csv("Play Store Data.csv")
+
+    df['Country'] = 'India'
+
+    df['Installs'] = (
+        df['Installs']
+        .astype(str)
+        .str.replace('+', '', regex=False)
+        .str.replace(',', '', regex=False)
+    )
+    df['Installs'] = pd.to_numeric(df['Installs'], errors='coerce')
+
+    df = df[
+        ~df['Category'].str.startswith(('A', 'C', 'G', 'S'), na=False)
+    ]
+
+    category_installs = (
+        df.groupby(['Country', 'Category'])['Installs']
+        .sum()
+        .reset_index()
+    )
+    top_categories = (
+        category_installs
+        .groupby('Category')['Installs']
+        .sum()
+        .sort_values(ascending=False)
+        .head(5)
+        .index
+    )
+
+    filtered_df = category_installs[
+        category_installs['Category'].isin(top_categories)
+    ]
+
+    fig = px.choropleth(
+        filtered_df,
+        locations='Country',
+        locationmode='country names',
+        color='Installs',
+        hover_name='Category',
+        animation_frame='Category',
+        color_continuous_scale='Turbo',
+        title='Global App Installs by Top 5 Categories'
+    )
+
+    fig.update_layout(
+        geo=dict(showframe=False, showcoastlines=True),
+        margin=dict(l=0, r=0, t=50, b=0)
+    )
+
+    fig.show()
+
+
+import pandas as pd
+import matplotlib.pyplot as plt
+from datetime import datetime
+import pytz
+import re
+
+ist = pytz.timezone("Asia/Kolkata")
+current_time = datetime.now(ist).time()
+
+start_time = datetime.strptime("16:00", "%H:%M").time()
+end_time   = datetime.strptime("18:00", "%H:%M").time()
+
+df = pd.read_csv("Play Store Data.csv")
+
+
+df['Rating'] = pd.to_numeric(df['Rating'], errors='coerce')
+
+df['Reviews'] = pd.to_numeric(df['Reviews'], errors='coerce')
+
+df['Installs'] = (
+    df['Installs']
+    .astype(str)
+    .str.replace('+', '', regex=False)
+    .str.replace(',', '', regex=False)
+)
+df['Installs'] = pd.to_numeric(df['Installs'], errors='coerce')
+
+def size_to_mb(size):
+    if isinstance(size, str):
+        if 'M' in size:
+            return float(size.replace('M', ''))
+        elif 'k' in size:
+            return float(size.replace('k', '')) / 1024
+    return None
+
+df['Size_MB'] = df['Size'].apply(size_to_mb)
+
+df['Last Updated'] = pd.to_datetime(df['Last Updated'], errors='coerce')
+df['Month'] = df['Last Updated'].dt.to_period('M').dt.to_timestamp()
+
+df['Has_Number'] = df['App'].astype(str).apply(
+    lambda x: bool(re.search(r'\d', x))
+)
+
+filtered_df = df[
+    (df['Rating'] >= 4.2) &
+    (df['Reviews'] > 1000) &
+    (~df['Has_Number']) &
+    (df['Category'].str.startswith(('T', 'P'))) &
+    (df['Size_MB'] >= 20) &
+    (df['Size_MB'] <= 80)
+]
+
+monthly_installs = (
+    filtered_df
+    .groupby(['Month', 'Category'])['Installs']
+    .sum()
+    .reset_index()
+)
+
+pivot_df = monthly_installs.pivot(
+    index='Month',
+    columns='Category',
+    values='Installs'
+).fillna(0)
+
+pivot_df = pivot_df.cumsum()
+
+translation_map = {
+    'Travel & Local': 'Voyage et Local',
+    'Productivity': 'Productividad',
+    'Photography': '写真'
+}
+
+pivot_df.rename(columns=translation_map, inplace=True)
+
+growth = pivot_df.pct_change()
+highlight_months = growth.gt(0.25).any(axis=1)
+
+if start_time <= current_time <= end_time:
+
+    plt.figure(figsize=(12, 6))
+
+    plt.stackplot(
+        pivot_df.index,
+        pivot_df.T,
+        labels=pivot_df.columns,
+        alpha=0.6
+    )
+
+    for month in pivot_df.index[highlight_months]:
+        plt.axvspan(
+            month,
+            month + pd.offsets.MonthEnd(1),
+            alpha=0.15
+        )
+
+    plt.title("Cumulative App Installs Over Time by Category")
+    plt.xlabel("Month")
+    plt.ylabel("Cumulative Installs")
+    plt.legend(loc='upper left')
+    plt.tight_layout()
+    plt.show()
+
+else:
+    print("This visualization is available only between 4 PM IST and 6 PM IST.")
+
+import pandas as pd
+import matplotlib.pyplot as plt
+from datetime import datetime
+import pytz
+import re
+
+ist = pytz.timezone("Asia/Kolkata")
+current_time = datetime.now(ist).time()
+
+start_time = datetime.strptime("17:00", "%H:%M").time()
+end_time = datetime.strptime("19:00", "%H:%M").time()
+
+
+df = pd.read_csv("Play Store Data.csv")
+
+
+
+# Rating & Reviews
+df['Rating'] = pd.to_numeric(df['Rating'], errors='coerce')
+df['Reviews'] = pd.to_numeric(df['Reviews'], errors='coerce')
+
+# Installs
+df['Installs'] = (
+    df['Installs']
+    .astype(str)
+    .str.replace('+', '', regex=False)
+    .str.replace(',', '', regex=False)
+)
+df['Installs'] = pd.to_numeric(df['Installs'], errors='coerce')
+
+# Size → MB
+def convert_size(size):
+    if isinstance(size, str):
+        if 'M' in size:
+            return float(size.replace('M', ''))
+        if 'k' in size:
+            return float(size.replace('k', '')) / 1024
+    return None
+
+df['Size_MB'] = df['Size'].apply(convert_size)
+
+
+df['Subjectivity'] = df['App'].astype(str).apply(
+    lambda x: min(len(x) / 20, 1)
+)
+
+
+valid_categories = [
+    'GAME', 'BEAUTY', 'BUSINESS', 'COMICS',
+    'COMMUNICATION', 'DATING', 'ENTERTAINMENT',
+    'SOCIAL', 'EVENTS'
+]
+
+df = df[df['Category'].str.upper().isin(valid_categories)]
+
+
+filtered_df = df[
+    (df['Rating'] > 3.5) &
+    (df['Reviews'] > 500) &
+    (df['Installs'] > 50000) &
+    (df['Subjectivity'] > 0.5) &
+    (~df['App'].str.contains('S', case=False, na=False))
+].copy()
+
+
+category_translation = {
+    'Beauty': 'सौंदर्य',        # Hindi
+    'Business': 'வணிகம்',       # Tamil
+    'Dating': 'Partnersuche'   # German
+}
+
+filtered_df.loc[:, 'Category_Label'] = (
+    filtered_df['Category'].replace(category_translation)
+)
+
+if start_time <= current_time <= end_time:
+
+    plt.figure(figsize=(12, 6))
+
+    for category in filtered_df['Category'].unique():
+        data = filtered_df[filtered_df['Category'] == category]
+
+        if category.upper() == 'GAME':
+            plt.scatter(
+                data['Size_MB'],
+                data['Rating'],
+                s=data['Installs'] / 2000,
+                color='pink',
+                alpha=0.75,
+                label='Game'
+            )
+        else:
+            plt.scatter(
+                data['Size_MB'],
+                data['Rating'],
+                s=data['Installs'] / 2000,
+                alpha=0.6,
+                label=category_translation.get(category, category)
+            )
+
+    plt.xlabel("App Size (MB)")
+    plt.ylabel("Average Rating")
+    plt.title("Bubble Chart: App Size vs Rating (Bubble Size = Installs)")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+else:
+    print(" This bubble chart is visible only between 5 PM IST and 7 PM IST.")
+
+
+import pandas as pd
+import matplotlib.pyplot as plt
+from datetime import datetime
+import pytz
+
+
+ist = pytz.timezone("Asia/Kolkata")
+current_time = datetime.now(ist).time()
+
+start_time = datetime.strptime("18:00", "%H:%M").time()
+end_time = datetime.strptime("21:00", "%H:%M").time()
+
+
+df = pd.read_csv("Play Store Data.csv")
+
+
+# Convert Reviews
+df['Reviews'] = pd.to_numeric(df['Reviews'], errors='coerce')
+
+# Clean Installs
+df['Installs'] = (
+    df['Installs']
+    .astype(str)
+    .str.replace('+', '', regex=False)
+    .str.replace(',', '', regex=False)
+)
+df['Installs'] = pd.to_numeric(df['Installs'], errors='coerce')
+
+# Convert Last Updated to datetime
+df['Last Updated'] = pd.to_datetime(df['Last Updated'], errors='coerce')
+
+# Extract Month
+df['Month'] = df['Last Updated'].dt.to_period('M').dt.to_timestamp()
+
+
+filtered_df = df[
+    (df['Reviews'] > 500) &
+    (~df['App'].astype(str).str.lower().str.startswith(('x', 'y', 'z'))) &
+    (~df['App'].astype(str).str.contains('s', case=False, na=False)) &
+    (df['Category'].astype(str).str.startswith(('E', 'C', 'B')))
+].copy()
+
+
+category_translation = {
+    'Beauty': 'सौंदर्य',        # Hindi
+    'Business': 'வணிகம்',       # Tamil
+    'Dating': 'Partnersuche'   # German
+}
+
+filtered_df.loc[:, 'Category_Label'] = (
+    filtered_df['Category'].replace(category_translation)
+)
+
+
+monthly_installs = (
+    filtered_df
+    .groupby(['Month', 'Category_Label'])['Installs']
+    .sum()
+    .reset_index()
+)
+
+pivot_df = monthly_installs.pivot(
+    index='Month',
+    columns='Category_Label',
+    values='Installs'
+).fillna(0)
+
+
+growth_df = pivot_df.pct_change()
+
+
+if start_time <= current_time <= end_time:
+
+    plt.figure(figsize=(12, 6))
+
+    for category in pivot_df.columns:
+        plt.plot(
+            pivot_df.index,
+            pivot_df[category],
+            marker='o',
+            label=category
+        )
+
+        # Highlight growth > 20%
+        high_growth = growth_df[category] > 0.20
+        for month in pivot_df.index[high_growth]:
+            plt.fill_between(
+                pivot_df.index,
+                0,
+                pivot_df[category],
+                where=(pivot_df.index == month),
+                alpha=0.15
+            )
+
+    plt.xlabel("Month")
+    plt.ylabel("Total Installs")
+    plt.title("Time Series Trend of Total Installs by App Category")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+else:
+    print("This chart is available only between 6 PM IST and 9 PM IST.")
+
+import pandas as pd
+import numpy as np
+from jupyter_dash import JupyterDash
+from dash import dcc, html
+from dash.dependencies import Input, Output
+import plotly.express as px
+import plotly.graph_objects as go
+
+# Load Dataset
+df = pd.read_csv("Play Store Data.csv")
+
+# Cleaning
+df['Rating'] = pd.to_numeric(df['Rating'], errors='coerce')
+df['Reviews'] = pd.to_numeric(df['Reviews'], errors='coerce')
+
+df['Installs'] = (
+    df['Installs']
+    .astype(str)
+    .str.replace('+', '', regex=False)
+    .str.replace(',', '', regex=False)
+)
+df['Installs'] = pd.to_numeric(df['Installs'], errors='coerce')
+
+df['Price'] = df['Price'].astype(str).str.replace('$','', regex=False)
+df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
+
+df['Revenue'] = df['Installs'] * df['Price']
+
+df['Size_MB'] = df['Size'].astype(str).str.replace('M','', regex=False)
+df['Size_MB'] = pd.to_numeric(df['Size_MB'], errors='coerce')
+
+df['Last Updated'] = pd.to_datetime(df['Last Updated'], errors='coerce')
+df['Month'] = df['Last Updated'].dt.month_name()
+
+# Create App
+app = JupyterDash(__name__)
+
+app.layout = html.Div([
+    html.H1("📊 Google Play Store Dashboard", style={'textAlign':'center'}),
+
+    dcc.Dropdown(
+        id='chart-selector',
+        options=[
+            {'label': 'Top Categories by Installs', 'value': 'bar'},
+            {'label': 'Free vs Paid Revenue', 'value': 'revenue'},
+            {'label': 'Bubble Chart Size vs Rating', 'value': 'bubble'},
+            {'label': 'Monthly Install Trend', 'value': 'trend'}
+        ],
+        value='bar'
+    ),
+
+    dcc.Graph(id='dashboard-chart')
+])
+
+@app.callback(
+    Output('dashboard-chart', 'figure'),
+    Input('chart-selector', 'value')
+)
+
+def update_chart(selected_chart):
+
+    if selected_chart == 'bar':
+        top = df.groupby('Category')['Installs'].sum().nlargest(10).reset_index()
+        fig = px.bar(top, x='Category', y='Installs',
+                     title="Top 10 Categories by Installs")
+
+    elif selected_chart == 'revenue':
+        summary = df.groupby('Type').agg(
+            Avg_Installs=('Installs','mean'),
+            Avg_Revenue=('Revenue','mean')
+        ).reset_index()
+
+        fig = go.Figure()
+        fig.add_bar(x=summary['Type'], y=summary['Avg_Installs'], name='Avg Installs')
+        fig.add_scatter(x=summary['Type'], y=summary['Avg_Revenue'],
+                        mode='lines+markers', name='Avg Revenue')
+
+        fig.update_layout(title="Free vs Paid Apps Performance")
+
+    elif selected_chart == 'bubble':
+        fig = px.scatter(df,
+                         x='Size_MB',
+                         y='Rating',
+                         size='Installs',
+                         color='Category',
+                         title="Bubble Chart: Size vs Rating")
+
+    elif selected_chart == 'trend':
+        monthly = df.groupby('Month')['Installs'].sum().reset_index()
+        fig = px.line(monthly, x='Month', y='Installs',
+                      title="Monthly Install Trend")
+
+    return fig
+
+app.run_server(mode='inline')
